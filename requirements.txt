@@ -1,0 +1,6 @@
+cx_Oracle
+Flask==2.3.3
+flask-cors
+keycloak
+pyopenssl
+gunicorn
