@@ -11,6 +11,7 @@ import logging
 from .entities.entity import BackendManager
 from .entities.flask_manager import FlaskManager
 from flask import redirect, request, jsonify, session, Response
+import cx_Oracle
 
 from svom.auth import (
     requires_auth
@@ -181,34 +182,43 @@ else:
         backendMgr.open_connection()
         query = f"INSERT INTO ATLAS_DBMON.DBMAT_DEVELOPERS (CONTACT) VALUES ('{contact}')"
         log.info(f'Will attempt to insert developer: {contact}')
-        rowcount = backendMgr.insert(query)
-        log.info(f'Insertion returned a rowcount of {rowcount} affected rows')
-        if rowcount == 1:
-            query = f"SELECT * from ATLAS_DBMON.DBMAT_DEVELOPERS WHERE CONTACT='{contact}'"
-            rows = backendMgr.get_rows(query)
-            developer_details = add_columns('DBMAT_DEVELOPERS', rows)[0]
-            dev_id = rows[0][0]
-            dev = rows[0][1]
-            insert_date = rows[0][2]
-            update_date = rows[0][3]
-            name = rows[0][4]
-            email = rows[0][5]
+        try:
+            rowcount = backendMgr.insert(query)
+            log.info(f'Insertion returned a rowcount of {rowcount} affected rows')
+            if rowcount == 1:
+                query = f"SELECT * from ATLAS_DBMON.DBMAT_DEVELOPERS WHERE CONTACT='{contact}'"
+                rows = backendMgr.get_rows(query)
+                developer_details = add_columns('DBMAT_DEVELOPERS', rows)[0]
+                dev_id = rows[0][0]
+                dev = rows[0][1]
+                insert_date = rows[0][2]
+                update_date = rows[0][3]
+                name = rows[0][4]
+                email = rows[0][5]
 
-            if dryrun == 1:
-                response["message"]=f'FOR COMMIT. {developer_details}'
+                if dryrun == 1:
+                    response["message"]=f'FOR COMMIT. {developer_details}'
+                else:
+                    backendMgr.connection_commit()
+                    response["message"]=f'COMMITTED. {developer_details}'
+
+                backendMgr.connection_close()
+                return jsonify(response)
+
             else:
-                backendMgr.connection_commit()
-                response["message"]=f'COMMITTED. {developer_details}'
-
-            backendMgr.connection_close()
-            return jsonify(response)
-
-        else:
-            log.info(f'Insertion failed. Number of affected rows: {rowcount}')
+                log.info(f'Insertion failed. Number of affected rows: {rowcount}')
+                response = {"message": "ERROR. No rows were inserted"}
+                backendMgr.connection_rollback()
+                backendMgr.connection_close()
+                return jsonify(response)
+        except cx_Oracle.IntegrityError as e:
+            error_obj, = e.args
+            print("Error Code:", error_obj.code)
+            print("Error Message:", error_obj.message)
+            response = {"message": "ERROR. "+ error_obj.message}
             backendMgr.connection_rollback()
             backendMgr.connection_close()
             return jsonify(response)
-
 
     @flaskmgr.app.route('/insert/', methods=['GET'])
     @requires_auth(required_roles=['default-role', 'dbmat_admins'])

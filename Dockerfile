@@ -31,8 +31,7 @@ RUN dnf install -y python3-pip && \
 
 RUN dnf clean all
 
-RUN chown -R ${USR} ${home_dir}
+RUN chown -R ${USR}:${USR} ${home_dir}
 USER ${USR}
 
 ENTRYPOINT ["./entrypoint.sh", "gunicorn"]
-
