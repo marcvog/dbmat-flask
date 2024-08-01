@@ -1,12 +1,12 @@
 FROM redhat/ubi9:latest
-MAINTAINER marcelo.vogel@cern.ch
+LABEL maintainer=marcelo.vogel@cern.ch
 
 # set up environment
-ENV USR flasky
-ENV home_dir /home/${USR}
-ENV GID 208
-ENV data_dir /home/${USR}/data
-ENV config_dir /home/${USR}/config
+ENV USR=flasky
+ENV home_dir=/home/${USR}
+ENV GID=208
+ENV data_dir=/home/${USR}/data
+ENV config_dir=/home/${USR}/config
 ENV NG_CLI_ANALYTICS=FALSE
 
 USER root
