@@ -54,19 +54,25 @@ def get_flaskmgr():
     properties = {'CLIENT_SECRET': get_environ('DBMAT_CLIENT_SECRET', 'none')
                  }
 
-    if os.path.isfile('./config/dbmat-config.json'):
-        with open('./config/dbmat-config.json') as json_file:
+    if os.path.isfile('./config/dbmat-flask-config.json'):
+        with open('./config/dbmat-flask-config.json') as json_file:
             prop_dic = json.load(json_file)
             for key in prop_dic.keys():
                 log.info(f'Update property from file for key {key}')
                 properties[key] = prop_dic[key]
 
-    if os.path.isfile('./config/DBMAT_SCHEMA_PASSWDS'):
-        with open('./config/DBMAT_SCHEMA_PASSWDS') as json_secrets:
+    # env
+    os.environ["PYTHON_USERNAME"] = properties["PYTHON_USERNAME"]
+    os.environ["PYTHON_CONNECTSTRING"] = properties["PYTHON_CONNECTSTRING"]
+
+    if os.path.isfile('./config/dbmat-flask-passwords.json'):
+        with open('./config/dbmat-flask-passwords.json') as json_secrets:
             passwd_dic = json.load(json_secrets)
             for key in passwd_dic.keys():
                 log.info(f'Update property from file for key {key}')
                 properties[key] = passwd_dic[key]
+    # env
+    os.environ["PYTHON_PASSWORD"] = properties["PYTHON_PASSWORD"]
 
     log.info(f'Use config properties : {properties}')
     mgr = FlaskManager(properties=properties)
@@ -144,7 +150,7 @@ else:
 
 
     @flaskmgr.app.route('/query/', methods=['GET'])
-    @requires_auth(required_roles=['default-role']) # Check user authentication
+    @requires_auth(required_roles=['dbmat_users']) # Check user authentication
     def query():
         query = None
         response = []
@@ -171,7 +177,7 @@ else:
 
 
     @flaskmgr.app.route('/insert/developer', methods=['GET'])
-    @requires_auth(required_roles=['default-role', 'dbmat_admins'])
+    @requires_auth(required_roles=['dbmat_users', 'dbmat_admins'])
     def insert_developer():
         rowcount=0
         dryrun=1
@@ -221,7 +227,7 @@ else:
             return jsonify(response)
 
     @flaskmgr.app.route('/insert/', methods=['GET'])
-    @requires_auth(required_roles=['default-role', 'dbmat_admins'])
+    @requires_auth(required_roles=['dbmat_users', 'dbmat_admins'])
     def insert():
         rowcount=0
         dryrun=1
@@ -261,7 +267,7 @@ else:
 
 
     @flaskmgr.app.route('/delete/developer', methods=['GET'])
-    @requires_auth(required_roles=['default-role', 'dbmat_admins'])
+    @requires_auth(required_roles=['dbmat_users', 'dbmat_admins'])
     def delete_developer():
         rowcount=0
         dryrun=1
@@ -297,7 +303,7 @@ else:
 
 
     @flaskmgr.app.route('/delete/', methods=['GET'])
-    @requires_auth(required_roles=['default-role', 'dbmat_admins'])
+    @requires_auth(required_roles=['dbmat_users', 'dbmat_admins'])
     def delete():
         rowcount=0
         dryrun=1
@@ -333,7 +339,7 @@ else:
 
 
     @flaskmgr.app.route('/select/', methods=['GET'])
-    @requires_auth(required_roles=['default-role', 'dbmat_admins'])
+    @requires_auth(required_roles=['dbmat_users', 'dbmat_admins'])
     def select():
         query = request.args.get('query')
         model = request.args.get('model')
@@ -346,7 +352,7 @@ else:
         return jsonify(response)
 
     @flaskmgr.app.route('/dml/', methods=['GET'])
-    @requires_auth(required_roles=['default-role', 'dbmat_admins'])
+    @requires_auth(required_roles=['dbmat_users', 'dbmat_admins'])
     def dml():
 
         dryrun=1 #do not commit
