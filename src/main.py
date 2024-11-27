@@ -60,10 +60,8 @@ def get_flaskmgr():
             for key in prop_dic.keys():
                 log.info(f'Update property from file for key {key}')
                 properties[key] = prop_dic[key]
-
-    # env
-    os.environ["PYTHON_USERNAME"] = properties["PYTHON_USERNAME"]
-    os.environ["PYTHON_CONNECTSTRING"] = properties["PYTHON_CONNECTSTRING"]
+        os.environ["PYTHON_USERNAME"] = properties["PYTHON_USERNAME"]
+        os.environ["PYTHON_CONNECTSTRING"] = properties["PYTHON_CONNECTSTRING"]
 
     if os.path.isfile('./config/dbmat-flask-passwords.json'):
         with open('./config/dbmat-flask-passwords.json') as json_secrets:
@@ -71,8 +69,7 @@ def get_flaskmgr():
             for key in passwd_dic.keys():
                 log.info(f'Update property from file for key {key}')
                 properties[key] = passwd_dic[key]
-    # env
-    os.environ["PYTHON_PASSWORD"] = properties["PYTHON_PASSWORD"]
+        os.environ["PYTHON_PASSWORD"] = properties["PYTHON_PASSWORD"]
 
     log.info(f'Use config properties : {properties}')
     mgr = FlaskManager(properties=properties)
@@ -112,13 +109,6 @@ else:
             if headers is not None:
                 response.headers.add('Access-Control-Allow-Headers', headers)
         return response
-
-
-    #@flaskmgr.app.route('/columns/', methods=['GET'])
-    #def get_columns():
-    #    table = request.args.get('table').upper()
-    #    return backendMgr.get_columns(table)
-
 
     def add_columns(table, rows):
         log.info(f'Adding columns for table: {table}')

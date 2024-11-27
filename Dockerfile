@@ -5,14 +5,13 @@ LABEL maintainer=marcelo.vogel@cern.ch
 ENV USR=flasky
 ENV home_dir=/home/${USR}
 ENV GID=208
-ENV data_dir=/home/${USR}/data
 ENV config_dir=/home/${USR}/config
 ENV NG_CLI_ANALYTICS=FALSE
 
 USER root
 RUN groupadd -g $GID $USR \
     && useradd -g $GID -d /home/$USR $USR
-RUN mkdir -p ${data_dir} && mkdir -p ${config_dir}
+RUN mkdir -p ${config_dir}
 
 COPY ./requirements.txt ${home_dir}/
 COPY ./entrypoint.sh ${home_dir}/
