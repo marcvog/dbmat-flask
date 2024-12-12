@@ -126,7 +126,7 @@ else:
         return response
 
 
-    @flaskmgr.app.route('/search/', methods=['GET'])
+    @flaskmgr.app.route('/api/search/', methods=['GET'])
     @requires_auth          # Check user authentication
     def get():
         table = request.args.get('table').upper()
@@ -139,7 +139,7 @@ else:
         #return _corsify(jsonify(dbresult))
 
 
-    @flaskmgr.app.route('/query/', methods=['GET'])
+    @flaskmgr.app.route('/api/query/', methods=['GET'])
     @requires_auth(required_roles=['dbmat_users']) # Check user authentication
     def query():
         query = None
@@ -166,7 +166,7 @@ else:
         return jsonify(response)
 
 
-    @flaskmgr.app.route('/insert/developer', methods=['GET'])
+    @flaskmgr.app.route('/api/insert/developer', methods=['GET'])
     @requires_auth(required_roles=['dbmat_users', 'dbmat_admins'])
     def insert_developer():
         rowcount=0
@@ -216,7 +216,7 @@ else:
             backendMgr.connection_close()
             return jsonify(response)
 
-    @flaskmgr.app.route('/insert/', methods=['GET'])
+    @flaskmgr.app.route('/api/insert/', methods=['GET'])
     @requires_auth(required_roles=['dbmat_users', 'dbmat_admins'])
     def insert():
         rowcount=0
@@ -256,7 +256,7 @@ else:
             return jsonify(response)
 
 
-    @flaskmgr.app.route('/delete/developer', methods=['GET'])
+    @flaskmgr.app.route('/api/delete/developer', methods=['GET'])
     @requires_auth(required_roles=['dbmat_users', 'dbmat_admins'])
     def delete_developer():
         rowcount=0
@@ -292,7 +292,7 @@ else:
             return jsonify(response)
 
 
-    @flaskmgr.app.route('/delete/', methods=['GET'])
+    @flaskmgr.app.route('/api/delete/', methods=['GET'])
     @requires_auth(required_roles=['dbmat_users', 'dbmat_admins'])
     def delete():
         rowcount=0
@@ -328,7 +328,7 @@ else:
             return jsonify(response)
 
 
-    @flaskmgr.app.route('/select/', methods=['GET'])
+    @flaskmgr.app.route('/api/select/', methods=['GET'])
     @requires_auth(required_roles=['dbmat_users', 'dbmat_admins'])
     def select():
         query = request.args.get('query')
@@ -341,7 +341,7 @@ else:
         backendMgr.connection_close()
         return jsonify(response)
 
-    @flaskmgr.app.route('/dml/', methods=['GET'])
+    @flaskmgr.app.route('/api/dml/', methods=['GET'])
     @requires_auth(required_roles=['dbmat_users', 'dbmat_admins'])
     def dml():
 

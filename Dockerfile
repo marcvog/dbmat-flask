@@ -25,12 +25,14 @@ RUN wget https://download.oracle.com/otn_software/linux/instantclient/219000/ora
 WORKDIR ${home_dir}
 
 RUN dnf install -y python3-pip && \
-    pip install --upgrade pip -r requirements.txt && \
+    pip install --no-cache-dir --upgrade pip -r requirements.txt && \
     cd auth/ && pip install ./src
 
 RUN dnf clean all
 
 RUN chown -R ${USR}:${USR} ${home_dir}
 USER ${USR}
+
+EXPOSE 5000
 
 ENTRYPOINT ["./entrypoint.sh", "gunicorn"]
