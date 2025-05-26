@@ -1,6 +1,6 @@
 variables:
     IMAGE: dbmat-angular-k8s-prod
-    VERSION: "1.0"
+    VERSION: "1.1"
 
 include:
  - project : 'ci-tools/container-image-ci-templates'
