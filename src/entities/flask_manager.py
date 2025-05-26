@@ -31,19 +31,9 @@ class FlaskManager:
     """
 
     def __init__(self, properties=None):
-        self.templates = {
-            "http_resp": {
-                "message": None,
-                "message_date": None,
-                "action": "default",
-                "code": 418,
-                "id": None
-            }
-        }
         self.app = Flask(__name__)
         CORS(self.app)
         AuthManager(self.app)
-        #self.api = setup_rest_api(self)
 
     def config(self, properties):
         self.app.config['MAX_CONTENT_LENGTH'] = 1000 * 1024 * 1024
@@ -52,12 +42,6 @@ class FlaskManager:
             return
         if 'MAX_CONTENT_LENGTH' in properties:
             self.app.config['MAX_CONTENT_LENGTH'] = properties['MAX_CONTENT_LENGTH']
-        if 'GROUPS' in properties:
-            self.app.config['GROUPS'] = properties['GROUPS']
-        if 'PASSWDS' in properties:
-            self.app.config['PASSWDS'] = properties['PASSWDS']
-        if 'CLIENT_SECRET' in properties:
-            self.app.config['CLIENT_SECRET'] = properties['CLIENT_SECRET']
 
     def run(self, host, port_num, debug_flag):
         """ runs the manager app """
