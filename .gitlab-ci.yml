@@ -20,3 +20,4 @@ build_container_job:
   CONTEXT_DIR: ""
   PUSH_IMAGE: "true"
   DOCKER_FILE_NAME: "Dockerfile"
+  
