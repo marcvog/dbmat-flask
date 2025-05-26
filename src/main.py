@@ -44,6 +44,7 @@ def get_flaskmgr():
     """
     Instantiate FlaskManager and start flask app
     """
+    properties = {}
     if os.path.isfile('./config/dbmat-flask-config.json'):
         with open('./config/dbmat-flask-config.json') as json_file:
             prop_dic = json.load(json_file)
