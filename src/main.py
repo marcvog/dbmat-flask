@@ -44,16 +44,6 @@ def get_flaskmgr():
     """
     Instantiate FlaskManager and start flask app
     """
-    # secrets
-    if os.path.isfile('/run/secrets/DBMAT_CLIENT_SECRET'):
-        with open('/run/secrets/DBMAT_CLIENT_SECRET') as key:
-           line = key.readline().rstrip('\n')
-           os.environ["DBMAT_CLIENT_SECRET"] = line
-
-    # properties
-    properties = {'CLIENT_SECRET': get_environ('DBMAT_CLIENT_SECRET', 'none')
-                 }
-
     if os.path.isfile('./config/dbmat-flask-config.json'):
         with open('./config/dbmat-flask-config.json') as json_file:
             prop_dic = json.load(json_file)
@@ -166,7 +156,7 @@ else:
         return jsonify(response)
 
 
-    @flaskmgr.app.route('/api/insert/developer', methods=['GET'])
+    @flaskmgr.app.route('/api/insert/developer/', methods=['GET'])
     @requires_auth(required_roles=['dbmat_users', 'dbmat_admins'])
     def insert_developer():
         rowcount=0
@@ -256,7 +246,7 @@ else:
             return jsonify(response)
 
 
-    @flaskmgr.app.route('/api/delete/developer', methods=['GET'])
+    @flaskmgr.app.route('/api/delete/developer/', methods=['GET'])
     @requires_auth(required_roles=['dbmat_users', 'dbmat_admins'])
     def delete_developer():
         rowcount=0
@@ -340,31 +330,4 @@ else:
         response = add_columns(model, rows)
         backendMgr.connection_close()
         return jsonify(response)
-
-    @flaskmgr.app.route('/api/dml/', methods=['GET'])
-    @requires_auth(required_roles=['dbmat_users', 'dbmat_admins'])
-    def dml():
-
-        dryrun=1 #do not commit
-        rowcount=0
-        response = {'message': ''}
-        query = request.args.get('query')
-        model = request.args.get('model')
-        dryrun = int(request.args.get('dryrun'))
-
-        backendMgr.open_connection()
-        log.info(f'Will attempt to: {query}')
-        rowcount = backendMgr.insert(query) # here you need a try, except clause
-        if rowcount != 1: # integrate with the try
-            response["message"]=f'report error'
-
-        if dryrun == 0: #do commit
-            backendMgr.connection_commit()
-            response["message"]=f'report done'
-        else:
-            response["message"]=f'report posible'
-
-        backendMgr.connection_close()
-        return jsonify(response)
-
 
