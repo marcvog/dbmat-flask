@@ -5,6 +5,7 @@ Before running, set these environment variables to connect to the database:
     PYTHON_PASSWORD       - your DB password
     PYTHON_CONNECTSTRING  - the connection string to the DB, e.g. "example.com/XEPDB1"
 """
+
 import os, sys, json
 import logging
 
@@ -13,15 +14,16 @@ from .entities.flask_manager import FlaskManager
 from flask import redirect, request, jsonify, session, Response
 import cx_Oracle
 
-from svom.auth import (
-    requires_auth
-)
+from svom.auth import requires_auth
 
 from keycloak import Client
 
 log = logging.getLogger(__name__)
-logging.basicConfig(stream=sys.stdout, level=logging.INFO, \
-                    format='%(asctime)s %(levelname)s [%(name)s] %(message)s')
+logging.basicConfig(
+    stream=sys.stdout,
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+)
 log.write = lambda msg: log.error(msg.strip()) if msg.strip() else None
 log.flush = lambda: None
 sys.stderr = log
@@ -35,56 +37,61 @@ def get_environ(env_var, default_val):
     value = os.environ.get(env_var)
     if value is None:
         value = default_val
-        msg = 'Empty environment variable ' + env_var \
-              + ', falling back to default: {}'.format(default_val)
+        msg = (
+            "Empty environment variable "
+            + env_var
+            + ", falling back to default: {}".format(default_val)
+        )
         log.warning(msg)
     return value
+
 
 def get_flaskmgr():
     """
     Instantiate FlaskManager and start flask app
     """
     properties = {}
-    if os.path.isfile('./config/dbmat-flask-config.json'):
-        with open('./config/dbmat-flask-config.json') as json_file:
+    if os.path.isfile("./config/dbmat-flask-config.json"):
+        with open("./config/dbmat-flask-config.json") as json_file:
             prop_dic = json.load(json_file)
             for key in prop_dic.keys():
-                log.info(f'Update property from file for key {key}')
+                log.info(f"Update property from file for key {key}")
                 properties[key] = prop_dic[key]
         os.environ["PYTHON_USERNAME"] = properties["PYTHON_USERNAME"]
         os.environ["PYTHON_CONNECTSTRING"] = properties["PYTHON_CONNECTSTRING"]
 
-    if os.path.isfile('./config/dbmat-flask-passwords.json'):
-        with open('./config/dbmat-flask-passwords.json') as json_secrets:
+    if os.path.isfile("./config/dbmat-flask-passwords.json"):
+        with open("./config/dbmat-flask-passwords.json") as json_secrets:
             passwd_dic = json.load(json_secrets)
             for key in passwd_dic.keys():
-                log.info(f'Update property from file for key {key}')
+                log.info(f"Update property from file for key {key}")
                 properties[key] = passwd_dic[key]
         os.environ["PYTHON_PASSWORD"] = properties["PYTHON_PASSWORD"]
 
-    log.info(f'Use config properties : {properties}')
+    log.info(f"Use config properties : {properties}")
     mgr = FlaskManager(properties=properties)
     mgr.config(properties=properties)
     return mgr
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     """
     Retrieve parameters from env variables
     """
     # Retrieve info from environment variables
-    flaskport = get_environ('FLASK_PORT', '5000')
+    flaskport = get_environ("FLASK_PORT", "5000")
 
-    log.info(f'Flask is running on {flaskport}')
+    log.info(f"Flask is running on {flaskport}")
     flaskmgr = get_flaskmgr()
 
     # Run the service
     debug_flag = False
     if log.level <= logging.DEBUG:
         debug_flag = True
-    logging.getLogger('werkzeug').setLevel(logging.WARNING)
-    flaskmgr.run('0.0.0.0', flaskport, debug_flag)
+    logging.getLogger("werkzeug").setLevel(logging.WARNING)
+    flaskmgr.run("0.0.0.0", flaskport, debug_flag)
 else:
-    log.info(f'Gunicorn is launching the application')
+    log.info(f"Gunicorn is launching the application")
     flaskmgr = get_flaskmgr()
     gunicorn_app = flaskmgr.get_app()
     backendMgr = BackendManager()
@@ -92,53 +99,51 @@ else:
     column_names = backendMgr.column_names()
 
     def _corsify(response):
-        """ adds CORS headers to response """
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        if request.method == 'OPTIONS':
-            response.headers.add('Access-Control-Allow-Methods', '*')
-            headers = request.headers.get('Access-Control-Request-Headers')
+        """adds CORS headers to response"""
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        if request.method == "OPTIONS":
+            response.headers.add("Access-Control-Allow-Methods", "*")
+            headers = request.headers.get("Access-Control-Request-Headers")
             if headers is not None:
-                response.headers.add('Access-Control-Allow-Headers', headers)
+                response.headers.add("Access-Control-Allow-Headers", headers)
         return response
 
     def add_columns(table, rows):
-        log.info(f'Adding columns for table: {table}')
+        log.info(f"Adding columns for table: {table}")
         response = []
         for row in rows:
             row_dict = {}
             index = 0
             for column in column_names[table]:
-                if ('DATE' in column or 'CREATED' in column) and row[index] != None:
-                    row_dict[column] = row[index].strftime('%Y-%m-%d %H:%M:%S')
+                if ("DATE" in column or "CREATED" in column) and row[index] != None:
+                    row_dict[column] = row[index].strftime("%Y-%m-%d %H:%M:%S")
                 else:
                     row_dict[column] = row[index]
-                index +=1
+                index += 1
             response.append(row_dict)
         return response
 
-
-    @flaskmgr.app.route('/api/search/', methods=['GET'])
-    @requires_auth          # Check user authentication
+    @flaskmgr.app.route("/api/search/", methods=["GET"])
+    @requires_auth  # Check user authentication
     def get():
-        table = request.args.get('table').upper()
+        table = request.args.get("table").upper()
         backendMgr.open_connection()
         query = "SELECT * from ATLAS_DBMON." + table
         rows = backendMgr.get_rows(query)
         response = add_columns(table, rows)
         backendMgr.connection_close()
         return jsonify(response)
-        #return _corsify(jsonify(dbresult))
+        # return _corsify(jsonify(dbresult))
 
-
-    @flaskmgr.app.route('/api/query/', methods=['GET'])
-    @requires_auth(required_roles=['dbmat_users']) # Check user authentication
+    @flaskmgr.app.route("/api/query/", methods=["GET"])
+    @requires_auth(required_roles=["dbmat_users"])  # Check user authentication
     def query():
         query = None
         response = []
-        column = request.args.get('column')
-        table = request.args.get('table').upper()
-        where = request.args.get('where')
-        orderby = request.args.get('order')
+        column = request.args.get("column")
+        table = request.args.get("table").upper()
+        where = request.args.get("where")
+        orderby = request.args.get("order")
         backendMgr.open_connection()
         if where is not None:
             query = f"SELECT {column} from ATLAS_DBMON.{table} WHERE {where} ORDER BY {orderby}"
@@ -146,7 +151,7 @@ else:
             query = f"SELECT {column} from ATLAS_DBMON.{table} ORDER BY {orderby}"
         rows = backendMgr.get_rows(query)
         response = []
-        if column == '*':
+        if column == "*":
             response = add_columns(table, rows)
         else:
             for row in rows:
@@ -156,26 +161,27 @@ else:
         backendMgr.connection_close()
         return jsonify(response)
 
-
-    @flaskmgr.app.route('/api/insert/developer/', methods=['GET'])
-    @requires_auth(required_roles=['dbmat_users', 'dbmat_admins'])
+    @flaskmgr.app.route("/api/insert/developer/", methods=["GET"])
+    @requires_auth(required_roles=["dbmat_users", "dbmat_admins"])
     def insert_developer():
-        rowcount=0
-        dryrun=1
+        rowcount = 0
+        dryrun = 1
         response = {"message": "ERROR. No rows were inserted"}
-        contact = request.args.get('contact')
-        #do some checks here on the developer entry
-        dryrun = int(request.args.get('dryrun'))
+        contact = request.args.get("contact")
+        # do some checks here on the developer entry
+        dryrun = int(request.args.get("dryrun"))
         backendMgr.open_connection()
-        query = f"INSERT INTO ATLAS_DBMON.DBMAT_DEVELOPERS (CONTACT) VALUES ('{contact}')"
-        log.info(f'Will attempt to insert developer: {contact}')
+        query = (
+            f"INSERT INTO ATLAS_DBMON.DBMAT_DEVELOPERS (CONTACT) VALUES ('{contact}')"
+        )
+        log.info(f"Will attempt to insert developer: {contact}")
         try:
             rowcount = backendMgr.insert(query)
-            log.info(f'Insertion returned a rowcount of {rowcount} affected rows')
+            log.info(f"Insertion returned a rowcount of {rowcount} affected rows")
             if rowcount == 1:
                 query = f"SELECT * from ATLAS_DBMON.DBMAT_DEVELOPERS WHERE CONTACT='{contact}'"
                 rows = backendMgr.get_rows(query)
-                developer_details = add_columns('DBMAT_DEVELOPERS', rows)[0]
+                developer_details = add_columns("DBMAT_DEVELOPERS", rows)[0]
                 dev_id = rows[0][0]
                 dev = rows[0][1]
                 insert_date = rows[0][2]
@@ -184,151 +190,172 @@ else:
                 email = rows[0][5]
 
                 if dryrun == 1:
-                    response["message"]=f'FOR COMMIT. {developer_details}'
+                    response["message"] = f"FOR COMMIT. {developer_details}"
                 else:
                     backendMgr.connection_commit()
-                    response["message"]=f'COMMITTED. {developer_details}'
+                    response["message"] = f"COMMITTED. {developer_details}"
 
                 backendMgr.connection_close()
                 return jsonify(response)
 
             else:
-                log.info(f'Insertion failed. Number of affected rows: {rowcount}')
+                log.info(f"Insertion failed. Number of affected rows: {rowcount}")
                 response = {"message": "ERROR. No rows were inserted"}
                 backendMgr.connection_rollback()
                 backendMgr.connection_close()
                 return jsonify(response)
         except cx_Oracle.IntegrityError as e:
-            error_obj, = e.args
+            (error_obj,) = e.args
             print("Error Code:", error_obj.code)
             print("Error Message:", error_obj.message)
-            response = {"message": "ERROR. "+ error_obj.message}
+            response = {"message": "ERROR. " + error_obj.message}
             backendMgr.connection_rollback()
             backendMgr.connection_close()
             return jsonify(response)
 
-    @flaskmgr.app.route('/api/insert/', methods=['GET'])
-    @requires_auth(required_roles=['dbmat_users', 'dbmat_admins'])
+    @flaskmgr.app.route("/api/insert/", methods=["GET"])
+    @requires_auth(required_roles=["dbmat_users", "dbmat_admins"])
     def insert():
-        rowcount=0
-        dryrun=1
+        rowcount = 0
+        dryrun = 1
         response = {}
-        model = request.args.get('model')
-        dryrun = int(request.args.get('dryrun'))
+        model = request.args.get("model")
+        dryrun = int(request.args.get("dryrun"))
         backendMgr.open_connection()
-        data = json.loads(request.args.get('query'))
-        columns = ','.join(data['columns'])
-        values = ','.join(data['values'])
-        query = 'INSERT INTO ATLAS_DBMON.'+model+' ('+columns+') VALUES ('+values+')'
-        log.info(f'Will execute the following insert statement: {query}')
-        rowcount = backendMgr.insert(query) #add try-except clause to this function, make sure a list is returned
-        log.info(f'Insertion returned a rowcount of {rowcount} affected rows')
+        data = json.loads(request.args.get("query"))
+        columns = ",".join(data["columns"])
+        values = ",".join(data["values"])
+        query = (
+            "INSERT INTO ATLAS_DBMON."
+            + model
+            + " ("
+            + columns
+            + ") VALUES ("
+            + values
+            + ")"
+        )
+        log.info(f"Will execute the following insert statement: {query}")
+        rowcount = backendMgr.insert(
+            query
+        )  # add try-except clause to this function, make sure a list is returned
+        log.info(f"Insertion returned a rowcount of {rowcount} affected rows")
         if rowcount > 0:
-            where = ' WHERE '
-            for index in range(len(data['columns'])):
-               if index == len(data['columns']) - 1:
-                   where += data['columns'][index] + " = '" + data['values'][index] + "'"
-               else:
-                   where += data['columns'][index] + " = '" + data['values'][index] + "' AND "
-            rows = backendMgr.get_rows('SELECT * FROM ATLAS_DBMON.'+model+where)
+            where = " WHERE "
+            for index in range(len(data["columns"])):
+                if index == len(data["columns"]) - 1:
+                    where += (
+                        data["columns"][index] + " = '" + data["values"][index] + "'"
+                    )
+                else:
+                    where += (
+                        data["columns"][index]
+                        + " = '"
+                        + data["values"][index]
+                        + "' AND "
+                    )
+            rows = backendMgr.get_rows("SELECT * FROM ATLAS_DBMON." + model + where)
             details = add_columns(model, rows)
             if dryrun == 1:
-                response["message"]=f'FOR COMMIT. {details}'
+                response["message"] = f"FOR COMMIT. {details}"
             else:
                 backendMgr.connection_commit()
-                response["message"]=f'COMMITTED. {details}'
+                response["message"] = f"COMMITTED. {details}"
             backendMgr.connection_close()
             return jsonify(response)
         else:
-            log.info(f'Isertion failed. No entries were inserted')
+            log.info(f"Isertion failed. No entries were inserted")
             response = {"message": "ERROR. No entries were inserted"}
             backendMgr.connection_rollback()
             backendMgr.connection_close()
             return jsonify(response)
 
-
-    @flaskmgr.app.route('/api/delete/developer/', methods=['GET'])
-    @requires_auth(required_roles=['dbmat_users', 'dbmat_admins'])
+    @flaskmgr.app.route("/api/delete/developer/", methods=["GET"])
+    @requires_auth(required_roles=["dbmat_users", "dbmat_admins"])
     def delete_developer():
-        rowcount=0
-        dryrun=1
+        rowcount = 0
+        dryrun = 1
         response = {}
-        contact = request.args.get('contact')
-        #do some checks here on the developer entry
-        dryrun = int(request.args.get('dryrun'))
+        contact = request.args.get("contact")
+        # do some checks here on the developer entry
+        dryrun = int(request.args.get("dryrun"))
         backendMgr.open_connection()
         query = f"SELECT * from ATLAS_DBMON.DBMAT_DEVELOPERS WHERE CONTACT='{contact}'"
-        rows = backendMgr.get_rows(query) #add try-except clause to this function, make sure a list is returned
+        rows = backendMgr.get_rows(
+            query
+        )  # add try-except clause to this function, make sure a list is returned
         if len(rows) == 1:
-            developer_details = add_columns('DBMAT_DEVELOPERS', rows)[0]
+            developer_details = add_columns("DBMAT_DEVELOPERS", rows)[0]
             if dryrun == 1:
-                response["message"]=f'FOR DELETE. {developer_details}'
+                response["message"] = f"FOR DELETE. {developer_details}"
             else:
                 query = f"DELETE from ATLAS_DBMON.DBMAT_DEVELOPERS WHERE CONTACT='{contact}'"
-                log.info(f'Will attempt to delete developer: {contact}')
-                rowcount = backendMgr.insert(query) #add try-except clause to this function (change it for dml), always return a number
-                log.info(f'Deletion returned a rowcount of {rowcount} affected rows')
+                log.info(f"Will attempt to delete developer: {contact}")
+                rowcount = backendMgr.insert(
+                    query
+                )  # add try-except clause to this function (change it for dml), always return a number
+                log.info(f"Deletion returned a rowcount of {rowcount} affected rows")
                 if rowcount == 1:
                     backendMgr.connection_commit()
-                    response["message"]=f'DELETED. {developer_details}'
+                    response["message"] = f"DELETED. {developer_details}"
                 else:
                     backendMgr.connection_rollback()
                     response = {"message": "ERROR. Failed to delete developer"}
             backendMgr.connection_close()
             return jsonify(response)
         else:
-            log.info(f'Deletion failed. Developer not found')
+            log.info(f"Deletion failed. Developer not found")
             response = {"message": "ERROR. Developer not found"}
             backendMgr.connection_close()
             return jsonify(response)
 
-
-    @flaskmgr.app.route('/api/delete/', methods=['GET'])
-    @requires_auth(required_roles=['dbmat_users', 'dbmat_admins'])
+    @flaskmgr.app.route("/api/delete/", methods=["GET"])
+    @requires_auth(required_roles=["dbmat_users", "dbmat_admins"])
     def delete():
-        rowcount=0
-        dryrun=1
+        rowcount = 0
+        dryrun = 1
         response = {}
-        model = request.args.get('model')
-        #query = request.args.get('query')
-        dryrun = int(request.args.get('dryrun'))
+        model = request.args.get("model")
+        # query = request.args.get('query')
+        dryrun = int(request.args.get("dryrun"))
         backendMgr.open_connection()
-        #query = f'SELECT * {query}'
-        rows = backendMgr.get_rows('SELECT * ' + request.args.get('query')) #add try-except clause to this function, make sure a list is returned
+        # query = f'SELECT * {query}'
+        rows = backendMgr.get_rows(
+            "SELECT * " + request.args.get("query")
+        )  # add try-except clause to this function, make sure a list is returned
         if len(rows) != 0:
             details = add_columns(model, rows)
             if dryrun == 1:
-                response["message"]=f'FOR DELETE. {details}'
+                response["message"] = f"FOR DELETE. {details}"
             else:
-                #query = f'DELETE {query}'
-                log.info(f'Will attempt to delete the following entries: {details}')
-                rowcount = backendMgr.insert('DELETE ' + request.args.get('query')) #add try-except clause to this function (change it for dml), always return a number
-                log.info(f'Deletion returned a rowcount of {rowcount} affected rows')
-                if rowcount > 0: #there could be a check here on the number of rows
+                # query = f'DELETE {query}'
+                log.info(f"Will attempt to delete the following entries: {details}")
+                rowcount = backendMgr.insert(
+                    "DELETE " + request.args.get("query")
+                )  # add try-except clause to this function (change it for dml), always return a number
+                log.info(f"Deletion returned a rowcount of {rowcount} affected rows")
+                if rowcount > 0:  # there could be a check here on the number of rows
                     backendMgr.connection_commit()
-                    response["message"]=f'DELETED. {details}'
+                    response["message"] = f"DELETED. {details}"
                 else:
                     backendMgr.connection_rollback()
                     response = {"message": "ERROR. Failed to delete entries"}
             backendMgr.connection_close()
             return jsonify(response)
         else:
-            log.info(f'Deletion failed. No entries found')
+            log.info(f"Deletion failed. No entries found")
             response = {"message": "ERROR. No entries found"}
             backendMgr.connection_close()
             return jsonify(response)
 
-
-    @flaskmgr.app.route('/api/select/', methods=['GET'])
-    @requires_auth(required_roles=['dbmat_users', 'dbmat_admins'])
+    @flaskmgr.app.route("/api/select/", methods=["GET"])
+    @requires_auth(required_roles=["dbmat_users", "dbmat_admins"])
     def select():
-        query = request.args.get('query')
-        model = request.args.get('model')
+        query = request.args.get("query")
+        model = request.args.get("model")
         backendMgr.open_connection()
         query = f"SELECT {query}"
-        log.info(f'Will attempt to SELECT: {query}')
+        log.info(f"Will attempt to SELECT: {query}")
         rows = backendMgr.get_rows(query)
         response = add_columns(model, rows)
         backendMgr.connection_close()
         return jsonify(response)
-
