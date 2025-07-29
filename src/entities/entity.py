@@ -9,7 +9,7 @@ class BackendManager:
         self._column_names = None
         self.get_table_names()
         self.get_column_names()
-        #self.open_connection()
+        # self.open_connection()
 
     def table_names(self):
         return self._table_names
@@ -19,25 +19,25 @@ class BackendManager:
 
     def open_connection(self):
 
-        #pool_min = 4
-        #pool_max = 4
-        #pool_inc = 0
+        # pool_min = 4
+        # pool_max = 4
+        # pool_inc = 0
 
         print("Connecting to: ", os.environ.get("PYTHON_CONNECTSTRING"))
-        #self._pool = cx_Oracle.SessionPool(
+        # self._pool = cx_Oracle.SessionPool(
         #    user=os.environ.get("PYTHON_USERNAME"),
         #    password=os.environ.get("PYTHON_PASSWORD"),
         #    dsn=os.environ.get("PYTHON_CONNECTSTRING"),
         #    min=pool_min,
         #    max=pool_max,
         #    increment=pool_inc
-        #)
+        # )
 
-        user=os.environ.get("PYTHON_USERNAME")
-        password=os.environ.get("PYTHON_PASSWORD")
-        dsn=os.environ.get("PYTHON_CONNECTSTRING")
-        testStr = "%s/%s@%s" % (user,password,dsn)
-        print('Connection string: ' + testStr)
+        user = os.environ.get("PYTHON_USERNAME")
+        password = os.environ.get("PYTHON_PASSWORD")
+        dsn = os.environ.get("PYTHON_CONNECTSTRING")
+        testStr = "%s/%s@%s" % (user, password, dsn)
+        print("Connection string: " + testStr)
         self._connection = cx_Oracle.connect(testStr)
 
     def get_rows(self, query):
@@ -47,7 +47,6 @@ class BackendManager:
             cursor.execute(query)
             response = cursor.fetchall()
         return response
-
 
     def connection_close(self):
         print(f"INFO: Closing connection")
@@ -72,7 +71,7 @@ class BackendManager:
     def get_column_names(self):
         self._column_names = {}
         for table in self._table_names:
-            self._column_names[table]=self.get_columns(table)
+            self._column_names[table] = self.get_columns(table)
 
     def insert(self, query):
         print(f"INFO: Will execute: {query}")
@@ -89,4 +88,3 @@ class BackendManager:
         print(f"INFO: Rolling back changes")
         self._connection.rollback()
         return
-
