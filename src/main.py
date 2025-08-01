@@ -3,20 +3,21 @@ Before running, set these environment variables to connect to the database:
 
     PYTHON_USERNAME       - your DB username
     PYTHON_PASSWORD       - your DB password
-    PYTHON_CONNECTSTRING  - the connection string to the DB, e.g. "example.com/XEPDB1"
+    PYTHON_CONNECTSTRING  - the connection string to the DB,
+                            e.g. "example.com/XEPDB1"
 """
 
-import os, sys, json
+import json
 import logging
+import os
+import sys
+
+import cx_Oracle
+from flask import jsonify, request
+from svom.auth import requires_auth
 
 from .entities.entity import BackendManager
 from .entities.flask_manager import FlaskManager
-from flask import redirect, request, jsonify, session, Response
-import cx_Oracle
-
-from svom.auth import requires_auth
-
-from keycloak import Client
 
 log = logging.getLogger(__name__)
 logging.basicConfig(
@@ -91,7 +92,7 @@ if __name__ == "__main__":
     logging.getLogger("werkzeug").setLevel(logging.WARNING)
     flaskmgr.run("0.0.0.0", flaskport, debug_flag)
 else:
-    log.info(f"Gunicorn is launching the application")
+    log.info("Gunicorn is launching the application")
     flaskmgr = get_flaskmgr()
     gunicorn_app = flaskmgr.get_app()
     backendMgr = BackendManager()
@@ -115,7 +116,7 @@ else:
             row_dict = {}
             index = 0
             for column in column_names[table]:
-                if ("DATE" in column or "CREATED" in column) and row[index] != None:
+                if ("DATE" in column or "CREATED" in column) and row[index] is not None:
                     row_dict[column] = row[index].strftime("%Y-%m-%d %H:%M:%S")
                 else:
                     row_dict[column] = row[index]
@@ -146,7 +147,10 @@ else:
         orderby = request.args.get("order")
         backendMgr.open_connection()
         if where is not None:
-            query = f"SELECT {column} from ATLAS_DBMON.{table} WHERE {where} ORDER BY {orderby}"
+            query = (
+                f"SELECT {column} from ATLAS_DBMON.{table} "
+                f"WHERE {where} ORDER BY {orderby}"
+            )
         else:
             query = f"SELECT {column} from ATLAS_DBMON.{table} ORDER BY {orderby}"
         rows = backendMgr.get_rows(query)
@@ -172,22 +176,26 @@ else:
         dryrun = int(request.args.get("dryrun"))
         backendMgr.open_connection()
         query = (
-            f"INSERT INTO ATLAS_DBMON.DBMAT_DEVELOPERS (CONTACT) VALUES ('{contact}')"
+            "INSERT INTO ATLAS_DBMON.DBMAT_DEVELOPERS (CONTACT) "
+            f"VALUES ('{contact}')"
         )
         log.info(f"Will attempt to insert developer: {contact}")
         try:
             rowcount = backendMgr.insert(query)
             log.info(f"Insertion returned a rowcount of {rowcount} affected rows")
             if rowcount == 1:
-                query = f"SELECT * from ATLAS_DBMON.DBMAT_DEVELOPERS WHERE CONTACT='{contact}'"
+                query = (
+                    "SELECT * from ATLAS_DBMON.DBMAT_DEVELOPERS "
+                    f"WHERE CONTACT='{contact}'"
+                )
                 rows = backendMgr.get_rows(query)
                 developer_details = add_columns("DBMAT_DEVELOPERS", rows)[0]
-                dev_id = rows[0][0]
-                dev = rows[0][1]
-                insert_date = rows[0][2]
-                update_date = rows[0][3]
-                name = rows[0][4]
-                email = rows[0][5]
+                # dev_id = rows[0][0]
+                # dev = rows[0][1]
+                # insert_date = rows[0][2]
+                # update_date = rows[0][3]
+                # name = rows[0][4]
+                # email = rows[0][5]
 
                 if dryrun == 1:
                     response["message"] = f"FOR COMMIT. {developer_details}"
@@ -235,17 +243,14 @@ else:
             + ")"
         )
         log.info(f"Will execute the following insert statement: {query}")
-        rowcount = backendMgr.insert(
-            query
-        )  # add try-except clause to this function, make sure a list is returned
+        rowcount = backendMgr.insert(query)
+        # add try-except clause to this function, make sure a list is returned
         log.info(f"Insertion returned a rowcount of {rowcount} affected rows")
         if rowcount > 0:
             where = " WHERE "
             for index in range(len(data["columns"])):
                 if index == len(data["columns"]) - 1:
-                    where += (
-                        data["columns"][index] + " = '" + data["values"][index] + "'"
-                    )
+                    where += f"{data['columns'][index]} = '{data['values'][index]}'"
                 else:
                     where += (
                         data["columns"][index]
@@ -253,7 +258,7 @@ else:
                         + data["values"][index]
                         + "' AND "
                     )
-            rows = backendMgr.get_rows("SELECT * FROM ATLAS_DBMON." + model + where)
+            rows = backendMgr.get_rows("SELECT * FROM ATLAS_DBMON.{model}{where}")
             details = add_columns(model, rows)
             if dryrun == 1:
                 response["message"] = f"FOR COMMIT. {details}"
@@ -263,7 +268,7 @@ else:
             backendMgr.connection_close()
             return jsonify(response)
         else:
-            log.info(f"Isertion failed. No entries were inserted")
+            log.info("Isertion failed. No entries were inserted")
             response = {"message": "ERROR. No entries were inserted"}
             backendMgr.connection_rollback()
             backendMgr.connection_close()
@@ -279,20 +284,21 @@ else:
         # do some checks here on the developer entry
         dryrun = int(request.args.get("dryrun"))
         backendMgr.open_connection()
-        query = f"SELECT * from ATLAS_DBMON.DBMAT_DEVELOPERS WHERE CONTACT='{contact}'"
-        rows = backendMgr.get_rows(
-            query
-        )  # add try-except clause to this function, make sure a list is returned
+        query = "SELECT * from ATLAS_DBMON.DBMAT_DEVELOPERS WHERE CONTACT='{contact}'"
+        rows = backendMgr.get_rows(query)
+        # add try-except clause to this function, make sure a list is returned
         if len(rows) == 1:
             developer_details = add_columns("DBMAT_DEVELOPERS", rows)[0]
             if dryrun == 1:
                 response["message"] = f"FOR DELETE. {developer_details}"
             else:
-                query = f"DELETE from ATLAS_DBMON.DBMAT_DEVELOPERS WHERE CONTACT='{contact}'"
+                query = (
+                    "DELETE from ATLAS_DBMON.DBMAT_DEVELOPERS "
+                    f"WHERE CONTACT='{contact}'"
+                )
                 log.info(f"Will attempt to delete developer: {contact}")
-                rowcount = backendMgr.insert(
-                    query
-                )  # add try-except clause to this function (change it for dml), always return a number
+                rowcount = backendMgr.insert(query)
+                # add try-except to this function, always return a number
                 log.info(f"Deletion returned a rowcount of {rowcount} affected rows")
                 if rowcount == 1:
                     backendMgr.connection_commit()
@@ -303,7 +309,7 @@ else:
             backendMgr.connection_close()
             return jsonify(response)
         else:
-            log.info(f"Deletion failed. Developer not found")
+            log.info("Deletion failed. Developer not found")
             response = {"message": "ERROR. Developer not found"}
             backendMgr.connection_close()
             return jsonify(response)
@@ -319,9 +325,8 @@ else:
         dryrun = int(request.args.get("dryrun"))
         backendMgr.open_connection()
         # query = f'SELECT * {query}'
-        rows = backendMgr.get_rows(
-            "SELECT * " + request.args.get("query")
-        )  # add try-except clause to this function, make sure a list is returned
+        rows = backendMgr.get_rows("SELECT * " + request.args.get("query"))
+        # add try-except clause to this function, make sure a list is returned
         if len(rows) != 0:
             details = add_columns(model, rows)
             if dryrun == 1:
@@ -329,11 +334,11 @@ else:
             else:
                 # query = f'DELETE {query}'
                 log.info(f"Will attempt to delete the following entries: {details}")
-                rowcount = backendMgr.insert(
-                    "DELETE " + request.args.get("query")
-                )  # add try-except clause to this function (change it for dml), always return a number
+                rowcount = backendMgr.insert("DELETE " + request.args.get("query"))
+                # add try-except to this function, always return a number
                 log.info(f"Deletion returned a rowcount of {rowcount} affected rows")
-                if rowcount > 0:  # there could be a check here on the number of rows
+                if rowcount > 0:
+                    # there could be a check here on the number of rows
                     backendMgr.connection_commit()
                     response["message"] = f"DELETED. {details}"
                 else:
@@ -342,7 +347,7 @@ else:
             backendMgr.connection_close()
             return jsonify(response)
         else:
-            log.info(f"Deletion failed. No entries found")
+            log.info("Deletion failed. No entries found")
             response = {"message": "ERROR. No entries found"}
             backendMgr.connection_close()
             return jsonify(response)
