@@ -1,5 +1,5 @@
-from datetime import datetime
-import cx_Oracle, os
+import os
+import cx_Oracle
 
 
 class BackendManager:
@@ -49,19 +49,29 @@ class BackendManager:
         return response
 
     def connection_close(self):
-        print(f"INFO: Closing connection")
+        print("INFO: Closing connection")
         self._connection.close()
         return
 
     def get_table_names(self):
-        query = "(SELECT table_name FROM all_tables WHERE table_name LIKE 'DBMAT_%') UNION (SELECT view_name FROM all_views WHERE view_name LIKE 'DBMAT_%')"
+        query = (
+            "(SELECT table_name FROM all_tables "
+            "WHERE table_name LIKE 'DBMAT_%') "
+            "UNION "
+            "(SELECT view_name FROM all_views "
+            "WHERE view_name LIKE 'DBMAT_%')"
+        )
         self.open_connection()
         rows = self.get_rows(query)
         self.connection_close()
         self._table_names = [item for sublist in rows for item in sublist]
 
     def get_columns(self, table):
-        query = f"SELECT COLUMN_NAME FROM ALL_TAB_COLUMNS WHERE TABLE_NAME = '{table}' ORDER BY COLUMN_ID"
+        query = (
+            "SELECT COLUMN_NAME FROM ALL_TAB_COLUMNS "
+            f"WHERE TABLE_NAME = '{table}' "
+            "ORDER BY COLUMN_ID"
+        )
         self.open_connection()
         rows = self.get_rows(query)
         self.connection_close()
@@ -80,11 +90,11 @@ class BackendManager:
         return cursor.rowcount
 
     def connection_commit(self):
-        print(f"INFO: Committing changes")
+        print("INFO: Committing changes")
         self._connection.commit()
         return
 
     def connection_rollback(self):
-        print(f"INFO: Rolling back changes")
+        print("INFO: Rolling back changes")
         self._connection.rollback()
         return
