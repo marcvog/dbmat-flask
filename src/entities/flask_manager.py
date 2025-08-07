@@ -3,24 +3,13 @@ FLASK manager
 Marcelo Vogel
 """
 
-# Flask
-from flask import Flask, url_for, redirect, request, jsonify, session, Response
-
-# from .rest_api import setup_rest_api
-
-from flask_cors import CORS
-
-import os, sys, tempfile, getopt, time, calendar
-
-# from subprocess import getstatusoutput
-# Date and time manipulation
-# from datetime import datetime
-
-from svom.auth import AuthManager
-from svom.auth import requires_auth
-
 # Logs
 import logging
+
+# Flask
+from flask import Flask
+from flask_cors import CORS
+from svom.auth import AuthManager
 
 log = logging.getLogger(__name__)
 
@@ -46,12 +35,17 @@ class FlaskManager:
     def run(self, host, port_num, debug_flag):
         """runs the manager app"""
         try:
-            self.app.run(host, port=port_num, debug=debug_flag, use_reloader=False)
+            self.app.run(
+                host,
+                port=port_num,
+                debug=debug_flag,
+                use_reloader=False,
+            )
         except Exception as exc:
             log.warning(f"Stopping because of an exception {exc}")
             raise RuntimeError(str(exc))
         finally:
-            log.info(f"Stopping....")
+            log.info("Stopping....")
 
     def get_app(self):
         """get the manager app"""
