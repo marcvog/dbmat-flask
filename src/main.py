@@ -12,7 +12,7 @@ import logging
 import os
 import sys
 
-import cx_Oracle
+import oracledb
 from flask import jsonify, request
 from svom.auth import requires_auth
 
@@ -25,10 +25,6 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
 )
-log.write = lambda msg: log.error(msg.strip()) if msg.strip() else None
-log.flush = lambda: None
-sys.stderr = log
-
 
 def get_environ(env_var, default_val):
     """
@@ -212,7 +208,7 @@ else:
                 backendMgr.connection_rollback()
                 backendMgr.connection_close()
                 return jsonify(response)
-        except cx_Oracle.IntegrityError as e:
+        except oracledb.IntegrityError as e:
             (error_obj,) = e.args
             print("Error Code:", error_obj.code)
             print("Error Message:", error_obj.message)

@@ -1,5 +1,5 @@
 import os
-import cx_Oracle
+import oracledb
 
 
 class BackendManager:
@@ -24,7 +24,7 @@ class BackendManager:
         # pool_inc = 0
 
         print("Connecting to: ", os.environ.get("PYTHON_CONNECTSTRING"))
-        # self._pool = cx_Oracle.SessionPool(
+        # self._pool = oracledb.SessionPool(
         #    user=os.environ.get("PYTHON_USERNAME"),
         #    password=os.environ.get("PYTHON_PASSWORD"),
         #    dsn=os.environ.get("PYTHON_CONNECTSTRING"),
@@ -38,7 +38,7 @@ class BackendManager:
         dsn = os.environ.get("PYTHON_CONNECTSTRING")
         testStr = "%s/%s@%s" % (user, password, dsn)
         print("Connection string: " + testStr)
-        self._connection = cx_Oracle.connect(testStr)
+        self._connection = oracledb.connect(testStr)
 
     def get_rows(self, query):
         print(f"INFO: Will execute: {query}")
