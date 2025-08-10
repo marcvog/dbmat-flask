@@ -33,6 +33,7 @@ class BackendManager:
         #    increment=pool_inc
         # )
 
+        oracledb.init_oracle_client()
         user = os.environ.get("PYTHON_USERNAME")
         password = os.environ.get("PYTHON_PASSWORD")
         dsn = os.environ.get("PYTHON_CONNECTSTRING")
