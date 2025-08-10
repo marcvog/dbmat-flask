@@ -1,6 +1,7 @@
-cx_Oracle
+oracledb
 Flask==2.3.3
 flask-cors
+types-Flask-Cors
 keycloak
 pyopenssl
 gunicorn
