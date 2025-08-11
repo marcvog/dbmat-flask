@@ -54,7 +54,7 @@ class BackendManager:
         self._connection.close()
         return
 
-    def get_table_names(self):
+    def get_table_names(self) -> list[str]:
         query = (
             "(SELECT table_name FROM all_tables "
             "WHERE table_name LIKE 'DBMAT_%') "
@@ -63,20 +63,26 @@ class BackendManager:
             "WHERE view_name LIKE 'DBMAT_%')"
         )
         self.open_connection()
-        rows = self.get_rows(query)
-        self.connection_close()
-        self._table_names = [item for sublist in rows for item in sublist]
+        try:
+            rows = self.get_rows(query)
+        finally:
+            self.connection_close()
+        names = [row[0] for row in rows]
+        self._table_names = names
+        return names
 
-    def get_columns(self, table):
+    def get_columns(self, table) -> list[str]:
         query = (
-            "SELECT COLUMN_NAME FROM ALL_TAB_COLUMNS "
+            "SELECT COLUMN_NAME FROM USER_TAB_COLUMNS "
             f"WHERE TABLE_NAME = '{table}' "
             "ORDER BY COLUMN_ID"
         )
         self.open_connection()
-        rows = self.get_rows(query)
-        self.connection_close()
-        columns = [item for sublist in rows for item in sublist]
+        try:
+            rows = self.get_rows(query)
+        finally:
+            self.connection_close()
+        columns = [row[0] for row in rows]
         return columns
 
     def get_column_names(self):

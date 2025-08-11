@@ -93,7 +93,7 @@ else:
     gunicorn_app = flaskmgr.get_app()
     backendMgr = BackendManager()
     table_names = backendMgr.table_names()
-    column_names = backendMgr.column_names()
+    column_names = backendMgr.column_names() #dictonary containing all columns (list value) for each table (string key)
 
     def _corsify(response):
         """adds CORS headers to response"""
@@ -124,23 +124,31 @@ else:
     @requires_auth  # Check user authentication
     def get():
         table = request.args.get("table").upper()
+        if table not in table_names:
+            return jsonify({"message": "ERROR. Invalid table name"}), 400
         backendMgr.open_connection()
-        query = "SELECT * from ATLAS_DBMON." + table
+        query = f"SELECT * from ATLAS_DBMON.{table}"
         rows = backendMgr.get_rows(query)
         response = add_columns(table, rows)
         backendMgr.connection_close()
         return jsonify(response)
-        # return _corsify(jsonify(dbresult))
 
     @flaskmgr.app.route("/api/query/", methods=["GET"])
     @requires_auth(required_roles=["dbmat_users"])  # Check user authentication
     def query():
         query = None
         response = []
-        column = request.args.get("column")
         table = request.args.get("table").upper()
+        column = request.args.get("column")
         where = request.args.get("where")
         orderby = request.args.get("order")
+        if table not in table_names:
+            return jsonify({"message": "ERROR. Invalid table name"}), 400
+        valid_columns = column_names[table] + ["*"]
+        if column not in valid_columns:
+            return jsonify({"message": "ERROR. Invalid column name"}), 400
+        if orderby not in column_names[table]:
+            return jsonify({"message": "ERROR. Invalid column name for sorting"}), 400
         backendMgr.open_connection()
         if where is not None:
             query = (
