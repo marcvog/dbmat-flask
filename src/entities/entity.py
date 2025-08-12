@@ -73,7 +73,7 @@ class BackendManager:
 
     def get_columns(self, table) -> list[str]:
         query = (
-            "SELECT COLUMN_NAME FROM USER_TAB_COLUMNS "
+            "SELECT COLUMN_NAME FROM ALL_TAB_COLUMNS "
             f"WHERE TABLE_NAME = '{table}' "
             "ORDER BY COLUMN_ID"
         )
