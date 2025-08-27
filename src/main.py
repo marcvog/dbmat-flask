@@ -140,24 +140,32 @@ else:
         response = []
         table = request.args.get("table").upper()
         column = request.args.get("column")
-        where = request.args.get("where")
+        fcolumn = request.args.get("filter_column")
+        fop =  request.args.get("filter_op")
+        fvalue = request.args.get("filter_value")
         orderby = request.args.get("order")
         if table not in table_names:
             return jsonify({"message": "ERROR. Invalid table name"}), 400
         valid_columns = column_names[table] + ["*"]
         if column not in valid_columns:
             return jsonify({"message": "ERROR. Invalid column name"}), 400
+        if fcolumn not in valid_columns:
+            return jsonify({"message": "ERROR. Invalid column name"}), 400
+        if fop not in {"eq", "like"}:
+            return jsonify({"message": "Invalid operator"}), 400
         if orderby not in column_names[table]:
             return jsonify({"message": "ERROR. Invalid column name for sorting"}), 400
         backendMgr.open_connection()
-        if where is not None:
-            query = (
-                f"SELECT {column} from ATLAS_DBMON.{table} "
-                f"WHERE {where} ORDER BY {orderby}"
-            )
-        else:
-            query = f"SELECT {column} from ATLAS_DBMON.{table} ORDER BY {orderby}"
-        rows = backendMgr.get_rows(query)
+        params = {}
+        query = f"SELECT {column} from ATLAS_DBMON.{table}"
+        if fop == "eq":
+            query += f" WHERE {fcolumn} = :fval"
+            params["fval"] = fvalue
+        elif fop == "like":
+            query += f" WHERE {fcolumn} LIKE :fval ESCAPE '\\'"
+            params["fval"] = fvalue
+        query += f" ORDER BY {orderby}"
+        rows = backendMgr.get_rows(query, params)
         response = []
         if column == "*":
             response = add_columns(table, rows)

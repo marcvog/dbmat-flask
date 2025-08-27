@@ -41,11 +41,11 @@ class BackendManager:
         print("Connection string: " + testStr)
         self._connection = oracledb.connect(testStr)
 
-    def get_rows(self, query):
+    def get_rows(self, query: str, params: dict | None = None):
         print(f"INFO: Will execute: {query}")
         response = None
         with self._connection.cursor() as cursor:
-            cursor.execute(query)
+            cursor.execute(query, params or {})
             response = cursor.fetchall()
         return response
 
