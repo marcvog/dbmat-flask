@@ -176,10 +176,10 @@ else:
 
             if fop == "eq":
                 where_sql += f" WHERE {fcolumn_u} = :fval"
-                params["fval"] = fvalue
+                params = {"fval": fvalue}
             else:
                 where_sql += f" WHERE {fcolumn_u} LIKE :fval ESCAPE '\\'"
-                params["fval"] = fvalue
+                params = {"fval": fvalue}
 
         # --- build and run SQL ---
         select_list = "*" if column == "*" else column
