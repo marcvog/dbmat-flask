@@ -46,9 +46,9 @@ class BackendManager:
         response = None
         with self._connection.cursor() as cursor:
             if params is None:
-                cursor.execute(sql)
+                cursor.execute(query)
             else:
-                cursor.execute(sql, params)
+                cursor.execute(query, params)
             response = cursor.fetchall()
         return response
 
