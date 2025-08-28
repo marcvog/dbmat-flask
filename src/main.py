@@ -13,6 +13,7 @@ import os
 import sys
 
 import oracledb
+from typing import Optional, Dict
 from flask import jsonify, request
 from svom.auth import requires_auth
 
@@ -138,43 +139,63 @@ else:
     def query():
         query = None
         response = []
-        table = request.args.get("table").upper()
-        column = request.args.get("column")
+        table = (request.args.get("table") or "").upper()
+        column  = (request.args.get("column") or "*").upper()
         fcolumn = request.args.get("filter_column")
         fop =  request.args.get("filter_op")
         fvalue = request.args.get("filter_value")
-        orderby = request.args.get("order")
+        orderby = (request.args.get("order") or "").upper()
+
         if table not in table_names:
             return jsonify({"message": "ERROR. Invalid table name"}), 400
-        valid_columns = column_names[table] + ["*"]
-        if column not in valid_columns:
+
+        # Allowed columns for this table (as UPPER)
+        valid_columns = [c.upper() for c in column_names[table]]
+        if column != "*" and column not in valid_columns:
             return jsonify({"message": "ERROR. Invalid column name"}), 400
-        if fcolumn not in valid_columns:
-            return jsonify({"message": "ERROR. Invalid column name"}), 400
-        if fop not in {"eq", "like"}:
-            return jsonify({"message": "Invalid operator"}), 400
-        if orderby not in column_names[table]:
+
+        if orderby not in valid_columns:
             return jsonify({"message": "ERROR. Invalid column name for sorting"}), 400
+
+        # --- optional filter handling ---
+        use_filter = fcolumn is not None or fop is not None or fvalue is not None
+        where_sql = ""
+        params: Optional[Dict[str, object]] = None
+
+        if use_filter:
+            # All three must be provided to form a valid filter
+            if fcolumn is None or fop is None or fvalue is None:
+                return jsonify({"message": "ERROR. Incomplete filter (need filter_column, filter_op, filter_value)"}), 400
+
+            fcolumn_u = fcolumn.upper()
+            if fcolumn_u not in valid_columns:
+                return jsonify({"message": "ERROR. Invalid column name"}), 400
+
+            if fop not in {"eq", "like"}:
+                return jsonify({"message": "Invalid operator"}), 400
+
+            if fop == "eq":
+                where_sql += f" WHERE {fcolumn_u} = :fval"
+                params["fval"] = fvalue
+            else:
+                where_sql += f" WHERE {fcolumn_u} LIKE :fval ESCAPE '\\'"
+                params["fval"] = fvalue
+
+        # --- build and run SQL ---
+        select_list = "*" if column == "*" else column
+        query = f"SELECT {select_list} FROM ATLAS_DBMON.{table}{where_sql} ORDER BY {orderby}"
+
         backendMgr.open_connection()
-        params = {}
-        query = f"SELECT {column} from ATLAS_DBMON.{table}"
-        if fop == "eq":
-            query += f" WHERE {fcolumn} = :fval"
-            params["fval"] = fvalue
-        elif fop == "like":
-            query += f" WHERE {fcolumn} LIKE :fval ESCAPE '\\'"
-            params["fval"] = fvalue
-        query += f" ORDER BY {orderby}"
-        rows = backendMgr.get_rows(query, params)
-        response = []
+        try:
+            rows = backendMgr.get_rows(query, params) if params is not None else backendMgr.get_rows(query)
+        finally:
+            backendMgr.connection_close()
+
         if column == "*":
             response = add_columns(table, rows)
         else:
-            for row in rows:
-                row_dict = {}
-                row_dict[column] = row[0]
-                response.append(row_dict)
-        backendMgr.connection_close()
+            response = [{column: row[0]} for row in rows]
+
         return jsonify(response)
 
     @flaskmgr.app.route("/api/insert/developer/", methods=["GET"])
