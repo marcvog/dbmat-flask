@@ -315,6 +315,8 @@ else:
         query = "SELECT * from ATLAS_DBMON.DBMAT_DEVELOPERS WHERE CONTACT='{contact}'"
         rows = backendMgr.get_rows(query)
         # add try-except clause to this function, make sure a list is returned
+        lenrows = len(rows)
+        log.info(f"Number of rows obtained from query: {lenrows}")
         if len(rows) == 1:
             developer_details = add_columns("DBMAT_DEVELOPERS", rows)[0]
             if dryrun == 1:
