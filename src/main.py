@@ -203,33 +203,28 @@ else:
     def insert_developer():
         rowcount = 0
         dryrun = 1
-        response = {"message": "ERROR. No rows were inserted"}
         contact = request.args.get("contact")
         # do some checks here on the developer entry
+        if contact is None:
+            return jsonify({"message": "ERROR. Invalid contact"})
         dryrun = int(request.args.get("dryrun"))
         backendMgr.open_connection()
         query = (
             "INSERT INTO ATLAS_DBMON.DBMAT_DEVELOPERS (CONTACT) "
-            f"VALUES ('{contact}')"
+            "VALUES (:contact)"
         )
         log.info(f"Will attempt to insert developer: {contact}")
         try:
-            rowcount = backendMgr.insert(query)
+            rowcount = backendMgr.insert(query, {"contact":contact})
             log.info(f"Insertion returned a rowcount of {rowcount} affected rows")
             if rowcount == 1:
                 query = (
                     "SELECT * from ATLAS_DBMON.DBMAT_DEVELOPERS "
-                    f"WHERE CONTACT='{contact}'"
+                    "WHERE CONTACT=:contact"
                 )
-                rows = backendMgr.get_rows(query)
+                rows = backendMgr.get_rows(query, {"contact": contact})
                 developer_details = add_columns("DBMAT_DEVELOPERS", rows)[0]
-                # dev_id = rows[0][0]
-                # dev = rows[0][1]
-                # insert_date = rows[0][2]
-                # update_date = rows[0][3]
-                # name = rows[0][4]
-                # email = rows[0][5]
-
+                response = {}
                 if dryrun == 1:
                     response["message"] = f"FOR COMMIT. {developer_details}"
                 else:
