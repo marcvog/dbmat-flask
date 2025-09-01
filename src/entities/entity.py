@@ -1,6 +1,6 @@
 import os
 import oracledb
-
+from typing import Union, Optional, Dict
 
 class BackendManager:
     def __init__(self):
@@ -41,11 +41,14 @@ class BackendManager:
         print("Connection string: " + testStr)
         self._connection = oracledb.connect(testStr)
 
-    def get_rows(self, query):
+    def get_rows(self, query: str, params: Optional[Dict[str, object]] = None):
         print(f"INFO: Will execute: {query}")
         response = None
         with self._connection.cursor() as cursor:
-            cursor.execute(query)
+            if params is None:
+                cursor.execute(query)
+            else:
+                cursor.execute(query, params)
             response = cursor.fetchall()
         return response
 
