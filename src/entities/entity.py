@@ -93,11 +93,18 @@ class BackendManager:
         for table in self._table_names:
             self._column_names[table] = self.get_columns(table)
 
-    def insert(self, query):
+    def insert(self, query: str, params: Optional[Dict[str, object]] = None) -> int:
         print(f"INFO: Will execute: {query}")
-        with self._connection.cursor() as cursor:
-            cursor.execute(query)
-        return cursor.rowcount
+        try:
+            with self._connection.cursor() as cursor:
+                if params is None:
+                    cursor.execute(query)
+                else:
+                    cursor.execute(query, params)
+                return cursor.rowcount
+        except Exception as e:
+            print(f"ERROR executing insert: {e}")
+            raise
 
     def connection_commit(self):
         print("INFO: Committing changes")
