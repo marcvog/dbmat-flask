@@ -312,7 +312,7 @@ else:
         # do some checks here on the developer entry
         dryrun = int(request.args.get("dryrun"))
         backendMgr.open_connection()
-        query = "SELECT * from ATLAS_DBMON.DBMAT_DEVELOPERS WHERE CONTACT='{contact}'"
+        query = f"SELECT * from ATLAS_DBMON.DBMAT_DEVELOPERS WHERE CONTACT='{contact}'"
         rows = backendMgr.get_rows(query)
         # add try-except clause to this function, make sure a list is returned
         if len(rows) == 1:
