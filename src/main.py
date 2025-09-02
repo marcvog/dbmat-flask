@@ -256,37 +256,42 @@ else:
         dryrun = 1
         response = {}
         model = request.args.get("model")
+        if model not in table_names:
+            return jsonify({"message": "ERROR. Invalid table name"}), 400
+
         dryrun = int(request.args.get("dryrun"))
         backendMgr.open_connection()
-        data = json.loads(request.args.get("query"))
-        columns = ",".join(data["columns"])
-        values = ",".join(data["values"])
+        data = json.loads(request.args.get("query")) # takes JSON-encoded string and constructs a dictionary object with it
+        columns = data["columns"]
+        values = data["values"]
+
+        # Allowed columns for this model (as UPPER)
+        valid_columns = [c.upper() for c in column_names[model]]
+        for column in columns:
+            if column not in valid_columns:
+                return jsonify({"message": "ERROR. Invalid column name: {column}"}), 400
+
+        placeholders = [f":val{i}" for i in range(len(values))]
+        params = {f"val{i}": values[i] for i in range(len(values))}
         query = (
-            "INSERT INTO ATLAS_DBMON."
-            + model
-            + " ("
-            + columns
-            + ") VALUES ("
-            + values
-            + ")"
+            f"INSERT INTO ATLAS_DBMON.{model} "
+            f"({','.join(columns)}) "
+            f"VALUES ({','.join(placeholders)})"
         )
         log.info(f"Will execute the following insert statement: {query}")
-        rowcount = backendMgr.insert(query)
+        rowcount = backendMgr.insert(query, params)
         # add try-except clause to this function, make sure a list is returned
         log.info(f"Insertion returned a rowcount of {rowcount} affected rows")
+
         if rowcount > 0:
-            where = " WHERE "
-            for index in range(len(data["columns"])):
-                if index == len(data["columns"]) - 1:
-                    where += f"{data['columns'][index]} = '{data['values'][index]}'"
-                else:
-                    where += (
-                        data["columns"][index]
-                        + " = '"
-                        + data["values"][index]
-                        + "' AND "
-                    )
-            rows = backendMgr.get_rows("SELECT * FROM ATLAS_DBMON.{model}{where}")
+            clauses = []
+            for idx, col in enumerate(columns):
+                param = placeholders[idx]
+                clauses.append(f"{col} = {param}")
+
+            where = (" WHERE " + " AND ".join(clauses)) if clauses else ""
+            sql = f"SELECT * FROM ATLAS_DBMON.{model}{where}"
+            rows = backendMgr.get_rows(sql, params)
             details = add_columns(model, rows)
             if dryrun == 1:
                 response["message"] = f"FOR COMMIT. {details}"
