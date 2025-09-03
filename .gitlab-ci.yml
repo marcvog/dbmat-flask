@@ -1,6 +1,6 @@
 variables:
     IMAGE: dbmat-flask-k8s-prod
-    VERSION: "1.6"
+    VERSION: "1.7"
 
 include:
  - project : 'ci-tools/container-image-ci-templates'
