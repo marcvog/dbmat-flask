@@ -261,7 +261,7 @@ else:
 
         dryrun = int(request.args.get("dryrun"))
         backendMgr.open_connection()
-        data = json.loads(request.args.get("query")) # takes JSON-encoded string and constructs a dictionary object with it
+        data = json.loads(request.args.get("data")) # takes JSON-encoded string and constructs a dictionary object with it
         columns = data["columns"]
         values = data["values"]
 
@@ -315,10 +315,12 @@ else:
         response = {}
         contact = request.args.get("contact")
         # do some checks here on the developer entry
+        if contact is None:
+            return jsonify({"message": "ERROR. Invalid contact"})
         dryrun = int(request.args.get("dryrun"))
         backendMgr.open_connection()
-        query = f"SELECT * from ATLAS_DBMON.DBMAT_DEVELOPERS WHERE CONTACT='{contact}'"
-        rows = backendMgr.get_rows(query)
+        query = f"SELECT * from ATLAS_DBMON.DBMAT_DEVELOPERS WHERE CONTACT=:contact"
+        rows = backendMgr.get_rows(query, {"contact":contact})
         # add try-except clause to this function, make sure a list is returned
         lenrows = len(rows)
         log.info(f"Number of rows obtained from query: {lenrows}")
@@ -329,10 +331,10 @@ else:
             else:
                 query = (
                     "DELETE from ATLAS_DBMON.DBMAT_DEVELOPERS "
-                    f"WHERE CONTACT='{contact}'"
+                    f"WHERE CONTACT=:contact"
                 )
                 log.info(f"Will attempt to delete developer: {contact}")
-                rowcount = backendMgr.insert(query)
+                rowcount = backendMgr.insert(query, {"contact":contact})
                 # add try-except to this function, always return a number
                 log.info(f"Deletion returned a rowcount of {rowcount} affected rows")
                 if rowcount == 1:
@@ -356,21 +358,34 @@ else:
         dryrun = 1
         response = {}
         model = request.args.get("model")
-        # query = request.args.get('query')
+        groupid = request.args.get("groupid")
+        data = json.loads(request.args.get("data")) 
+        values = data["data"]
+        if model not in table_names:
+            return jsonify({"message": "ERROR. Invalid table name"}), 400
         dryrun = int(request.args.get("dryrun"))
         backendMgr.open_connection()
-        # query = f'SELECT * {query}'
-        rows = backendMgr.get_rows("SELECT * " + request.args.get("query"))
-        # add try-except clause to this function, make sure a list is returned
+        placeholders = [f":val{i}" for i in range(len(values))]
+        params = {f"val{i}": values[i] for i in range(len(values))}
+        params["groupid"] = groupid
+        query = (
+            f"SELECT * FROM ATLAS_DBMON.DBMAT_DG2DEVS WHERE DBMDEV_ID IN "
+            f"({','.join(placeholders)}) "
+            f"AND DBMDG_ID = :groupid"
+        )
+        rows = backendMgr.get_rows(query, params)
         if len(rows) != 0:
             details = add_columns(model, rows)
             if dryrun == 1:
                 response["message"] = f"FOR DELETE. {details}"
             else:
-                # query = f'DELETE {query}'
                 log.info(f"Will attempt to delete the following entries: {details}")
-                rowcount = backendMgr.insert("DELETE " + request.args.get("query"))
-                # add try-except to this function, always return a number
+                query = (
+                    f"DELETE FROM ATLAS_DBMON.DBMAT_DG2DEVS WHERE DBMDEV_ID IN "
+                    f"({','.join(placeholders)}) "
+                    f"AND DBMDG_ID = :groupid"
+                )                
+                rowcount = backendMgr.insert(query, params)
                 log.info(f"Deletion returned a rowcount of {rowcount} affected rows")
                 if rowcount > 0:
                     # there could be a check here on the number of rows
