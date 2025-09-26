@@ -414,3 +414,33 @@ else:
         response = add_columns(model, rows)
         backendMgr.connection_close()
         return jsonify(response)
+
+    @flaskmgr.app.route("/api/groups/", methods=["GET"])
+    @requires_auth(required_roles=["dbmat_users", "dbmat_admins"])
+    def getAllGroups():
+        query = (
+            "SELECT * FROM ATLAS_DBMON.DBMAT_DEV_GROUPS " 
+            "WHERE DBMDG_GROUP_NAME like 'ATLAS_%' "
+            "ORDER BY DBMDG_GROUP_NAME"
+        )
+        backendMgr.open_connection()
+        log.info(f"Will attempt to: {query}")
+        rows = backendMgr.get_rows(query)
+        response = add_columns("DBMAT_DEV_GROUPS", rows)
+        backendMgr.connection_close()
+        return jsonify(response)
+
+    @flaskmgr.app.route("/api/developers/", methods=["GET"])
+    @requires_auth(required_roles=["dbmat_users", "dbmat_admins"])
+    def getAllGroups():
+        query = (
+            "SELECT * FROM ATLAS_DBMON.DBMAT_DEVELOPERS "
+            "ORDER BY CONTACT_NAME"
+        )
+        backendMgr.open_connection()
+        log.info(f"Will attempt to: {query}")
+        rows = backendMgr.get_rows(query)
+        response = add_columns("DBMAT_DEVELOPERS", rows)
+        backendMgr.connection_close()
+        return jsonify(response)
+
