@@ -432,7 +432,7 @@ else:
 
     @flaskmgr.app.route("/api/developers/", methods=["GET"])
     @requires_auth(required_roles=["dbmat_users", "dbmat_admins"])
-    def getAllGroups():
+    def getAllDevelopers():
         query = (
             "SELECT * FROM ATLAS_DBMON.DBMAT_DEVELOPERS "
             "ORDER BY CONTACT_NAME"
