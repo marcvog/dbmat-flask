@@ -319,7 +319,7 @@ else:
             return jsonify({"message": "ERROR. Invalid contact"})
         dryrun = int(request.args.get("dryrun"))
         backendMgr.open_connection()
-        query = f"SELECT * from ATLAS_DBMON.DBMAT_DEVELOPERS WHERE CONTACT=:contact"
+        query = "SELECT * from ATLAS_DBMON.DBMAT_DEVELOPERS WHERE CONTACT=:contact"
         rows = backendMgr.get_rows(query, {"contact":contact})
         # add try-except clause to this function, make sure a list is returned
         lenrows = len(rows)
@@ -331,7 +331,7 @@ else:
             else:
                 query = (
                     "DELETE from ATLAS_DBMON.DBMAT_DEVELOPERS "
-                    f"WHERE CONTACT=:contact"
+                    "WHERE CONTACT=:contact"
                 )
                 log.info(f"Will attempt to delete developer: {contact}")
                 rowcount = backendMgr.insert(query, {"contact":contact})
@@ -369,9 +369,9 @@ else:
         params = {f"val{i}": values[i] for i in range(len(values))}
         params["groupid"] = groupid
         query = (
-            f"SELECT * FROM ATLAS_DBMON.DBMAT_DG2DEVS WHERE DBMDEV_ID IN "
+            "SELECT * FROM ATLAS_DBMON.DBMAT_DG2DEVS WHERE DBMDEV_ID IN "
             f"({','.join(placeholders)}) "
-            f"AND DBMDG_ID = :groupid"
+            "AND DBMDG_ID = :groupid"
         )
         rows = backendMgr.get_rows(query, params)
         if len(rows) != 0:
@@ -381,9 +381,9 @@ else:
             else:
                 log.info(f"Will attempt to delete the following entries: {details}")
                 query = (
-                    f"DELETE FROM ATLAS_DBMON.DBMAT_DG2DEVS WHERE DBMDEV_ID IN "
+                    "DELETE FROM ATLAS_DBMON.DBMAT_DG2DEVS WHERE DBMDEV_ID IN "
                     f"({','.join(placeholders)}) "
-                    f"AND DBMDG_ID = :groupid"
+                    "AND DBMDG_ID = :groupid"
                 )                
                 rowcount = backendMgr.insert(query, params)
                 log.info(f"Deletion returned a rowcount of {rowcount} affected rows")
@@ -440,6 +440,27 @@ else:
         backendMgr.open_connection()
         log.info(f"Will attempt to: {query}")
         rows = backendMgr.get_rows(query)
+        response = add_columns("DBMAT_DEVELOPERS", rows)
+        backendMgr.connection_close()
+        return jsonify(response)
+
+    @flaskmgr.app.route("/api/alldevsnotingroup/", methods=["GET"])
+    @requires_auth(required_roles=["dbmat_users", "dbmat_admins"])
+    def getAllDevsNotInGroup():
+        group_id = request.args.get("group_id")
+        query = (
+            "SELECT * "
+            "FROM ATLAS_DBMON.DBMAT_DEVELOPERS "
+            "WHERE DBMDEV_ID NOT IN ("
+            "    SELECT UNIQUE DBMDEV_ID "
+            "    FROM ATLAS_DBMON.DBMAT_DG2DEVS "
+            "    WHERE DBMDG_ID = :group_id"
+            ") "
+            "ORDER BY CONTACT_NAME"
+        )
+        backendMgr.open_connection()
+        log.info(f"Will attempt to: {query}")
+        rows = backendMgr.get_rows(query,{"group_id": group_id})
         response = add_columns("DBMAT_DEVELOPERS", rows)
         backendMgr.connection_close()
         return jsonify(response)
