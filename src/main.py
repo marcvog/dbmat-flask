@@ -359,6 +359,7 @@ else:
         response = {}
         model = request.args.get("model")
         groupid = request.args.get("groupid", type=int)
+        developerid = request.args.get("developerid", type=int)
         data = json.loads(request.args.get("data"))
         values = [int(v) for v in data["data"]]
         if model not in table_names:
@@ -367,12 +368,23 @@ else:
         backendMgr.open_connection()
         placeholders = [f":val{i}" for i in range(len(values))]
         params = {f"val{i}": values[i] for i in range(len(values))}
-        params["groupid"] = groupid
-        query = (
-            "SELECT * FROM ATLAS_DBMON.DBMAT_DG2DEVS WHERE DBMDEV_ID IN "
-            f"({','.join(placeholders)}) "
-            "AND DBMDG_ID = :groupid"
-        )
+
+        if groupid is not None:
+            params["groupid"] = groupid
+            query = (
+                "SELECT * FROM ATLAS_DBMON.DBMAT_DG2DEVS WHERE DBMDEV_ID IN "
+                f"({','.join(placeholders)}) "
+                "AND DBMDG_ID = :groupid"
+            )
+            
+        if developerid is not None:
+            params["developerid"] = developerid
+            query = (
+                "SELECT * FROM ATLAS_DBMON.DBMAT_DG2DEVS WHERE DBMDG_ID IN "
+                f"({','.join(placeholders)}) "
+                "AND DBMDEV_ID = :developerid"
+            )
+         
         rows = backendMgr.get_rows(query, params)
         if len(rows) != 0:
             details = add_columns(model, rows)
@@ -380,11 +392,18 @@ else:
                 response["message"] = f"FOR DELETE. {details}"
             else:
                 log.info(f"Will attempt to delete the following entries: {details}")
-                query = (
-                    "DELETE FROM ATLAS_DBMON.DBMAT_DG2DEVS WHERE DBMDEV_ID IN "
-                    f"({','.join(placeholders)}) "
-                    "AND DBMDG_ID = :groupid"
-                )                
+                if groupid is not None:
+                    query = (
+                        "DELETE FROM ATLAS_DBMON.DBMAT_DG2DEVS WHERE DBMDEV_ID IN "
+                        f"({','.join(placeholders)}) "
+                        "AND DBMDG_ID = :groupid"
+                    )
+                if developerid is not None:
+                    query = (
+                        "DELETE FROM ATLAS_DBMON.DBMAT_DG2DEVS WHERE DBMDG_ID IN "
+                        f"({','.join(placeholders)}) "
+                        "AND DBMDEV_ID = :developerid"
+                )
                 rowcount = backendMgr.insert(query, params)
                 log.info(f"Deletion returned a rowcount of {rowcount} affected rows")
                 if rowcount > 0:
