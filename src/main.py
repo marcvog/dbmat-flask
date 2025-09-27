@@ -358,8 +358,8 @@ else:
         dryrun = 1
         response = {}
         model = request.args.get("model")
-        groupid = request.args.get("groupid")
-        data = json.loads(request.args.get("data")) 
+        groupid = request.args.get("groupid", type=int)
+        data = json.loads(request.args.get("data"))
         values = data["data"]
         if model not in table_names:
             return jsonify({"message": "ERROR. Invalid table name"}), 400
