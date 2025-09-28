@@ -319,7 +319,7 @@ else:
             return jsonify({"message": "ERROR. Invalid contact"})
         dryrun = int(request.args.get("dryrun"))
         backendMgr.open_connection()
-        query = f"SELECT * from ATLAS_DBMON.DBMAT_DEVELOPERS WHERE CONTACT=:contact"
+        query = "SELECT * from ATLAS_DBMON.DBMAT_DEVELOPERS WHERE CONTACT=:contact"
         rows = backendMgr.get_rows(query, {"contact":contact})
         # add try-except clause to this function, make sure a list is returned
         if len(rows) == 1:
@@ -329,7 +329,7 @@ else:
             else:
                 query = (
                     "DELETE from ATLAS_DBMON.DBMAT_DEVELOPERS "
-                    f"WHERE CONTACT=:contact"
+                    "WHERE CONTACT=:contact"
                 )
                 log.info(f"Will attempt to delete developer: {contact}")
                 rowcount = backendMgr.insert(query, {"contact":contact})
@@ -356,21 +356,33 @@ else:
         dryrun = 1
         response = {}
         model = request.args.get("model")
-        groupid = request.args.get("groupid")
-        data = json.loads(request.args.get("data")) 
-        values = data["data"]
+        groupid = request.args.get("groupid", type=int)
+        developerid = request.args.get("developerid", type=int)
+        data = json.loads(request.args.get("data"))
+        values = [int(v) for v in data["data"]]
         if model not in table_names:
             return jsonify({"message": "ERROR. Invalid table name"}), 400
         dryrun = int(request.args.get("dryrun"))
         backendMgr.open_connection()
         placeholders = [f":val{i}" for i in range(len(values))]
         params = {f"val{i}": values[i] for i in range(len(values))}
-        params["groupid"] = groupid
-        query = (
-            f"SELECT * FROM ATLAS_DBMON.DBMAT_DG2DEVS WHERE DBMDEV_ID IN "
-            f"({','.join(placeholders)}) "
-            f"AND DBMDG_ID = :groupid"
-        )
+
+        if groupid is not None:
+            params["groupid"] = groupid
+            query = (
+                "SELECT * FROM ATLAS_DBMON.DBMAT_DG2DEVS WHERE DBMDEV_ID IN "
+                f"({','.join(placeholders)}) "
+                "AND DBMDG_ID = :groupid"
+            )
+            
+        if developerid is not None:
+            params["developerid"] = developerid
+            query = (
+                "SELECT * FROM ATLAS_DBMON.DBMAT_DG2DEVS WHERE DBMDG_ID IN "
+                f"({','.join(placeholders)}) "
+                "AND DBMDEV_ID = :developerid"
+            )
+         
         rows = backendMgr.get_rows(query, params)
         if len(rows) != 0:
             details = add_columns(model, rows)
@@ -378,11 +390,18 @@ else:
                 response["message"] = f"FOR DELETE. {details}"
             else:
                 log.info(f"Will attempt to delete the following entries: {details}")
-                query = (
-                    f"DELETE FROM ATLAS_DBMON.DBMAT_DG2DEVS WHERE DBMDEV_ID IN "
-                    f"({','.join(placeholders)}) "
-                    f"AND DBMDG_ID = :groupid"
-                )                
+                if groupid is not None:
+                    query = (
+                        "DELETE FROM ATLAS_DBMON.DBMAT_DG2DEVS WHERE DBMDEV_ID IN "
+                        f"({','.join(placeholders)}) "
+                        "AND DBMDG_ID = :groupid"
+                    )
+                if developerid is not None:
+                    query = (
+                        "DELETE FROM ATLAS_DBMON.DBMAT_DG2DEVS WHERE DBMDG_ID IN "
+                        f"({','.join(placeholders)}) "
+                        "AND DBMDEV_ID = :developerid"
+                )
                 rowcount = backendMgr.insert(query, params)
                 log.info(f"Deletion returned a rowcount of {rowcount} affected rows")
                 if rowcount > 0:
@@ -412,3 +431,54 @@ else:
         response = add_columns(model, rows)
         backendMgr.connection_close()
         return jsonify(response)
+
+    @flaskmgr.app.route("/api/groups/", methods=["GET"])
+    @requires_auth(required_roles=["dbmat_users", "dbmat_admins"])
+    def getAllGroups():
+        query = (
+            "SELECT * FROM ATLAS_DBMON.DBMAT_DEV_GROUPS " 
+            "WHERE DBMDG_GROUP_NAME like 'ATLAS_%' "
+            "ORDER BY DBMDG_GROUP_NAME"
+        )
+        backendMgr.open_connection()
+        log.info(f"Will attempt to: {query}")
+        rows = backendMgr.get_rows(query)
+        response = add_columns("DBMAT_DEV_GROUPS", rows)
+        backendMgr.connection_close()
+        return jsonify(response)
+
+    @flaskmgr.app.route("/api/developers/", methods=["GET"])
+    @requires_auth(required_roles=["dbmat_users", "dbmat_admins"])
+    def getAllDevelopers():
+        query = (
+            "SELECT * FROM ATLAS_DBMON.DBMAT_DEVELOPERS "
+            "ORDER BY CONTACT_NAME"
+        )
+        backendMgr.open_connection()
+        log.info(f"Will attempt to: {query}")
+        rows = backendMgr.get_rows(query)
+        response = add_columns("DBMAT_DEVELOPERS", rows)
+        backendMgr.connection_close()
+        return jsonify(response)
+
+    @flaskmgr.app.route("/api/alldevsnotingroup/", methods=["GET"])
+    @requires_auth(required_roles=["dbmat_users", "dbmat_admins"])
+    def getAllDevsNotInGroup():
+        group_id = request.args.get("group_id", type=int)
+        query = (
+            "SELECT * "
+            "FROM ATLAS_DBMON.DBMAT_DEVELOPERS "
+            "WHERE DBMDEV_ID NOT IN ("
+            "    SELECT UNIQUE DBMDEV_ID "
+            "    FROM ATLAS_DBMON.DBMAT_DG2DEVS "
+            "    WHERE DBMDG_ID = :group_id"
+            ") "
+            "ORDER BY CONTACT_NAME"
+        )
+        backendMgr.open_connection()
+        log.info(f"Will attempt to: {query}")
+        rows = backendMgr.get_rows(query,{"group_id": group_id})
+        response = add_columns("DBMAT_DEVELOPERS", rows)
+        backendMgr.connection_close()
+        return jsonify(response)
+
