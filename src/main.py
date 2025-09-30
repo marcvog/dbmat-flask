@@ -487,7 +487,7 @@ else:
     @flaskmgr.app.route("/api/allgroupsnotindev/", methods=["GET"])
     @requires_auth(required_roles=["dbmat_users", "dbmat_admins"])
     def getAllGroupsNotInDev():
-        group_id = request.args.get("developer_id", type=int)
+        developer_id = request.args.get("developer_id", type=int)
         query = (
             "SELECT * "
             "FROM ATLAS_DBMON.DBMAT_DEV_GROUPS "
