@@ -484,3 +484,24 @@ else:
         backendMgr.connection_close()
         return jsonify(response)
 
+    @flaskmgr.app.route("/api/allgroupsnotindev/", methods=["GET"])
+    @requires_auth(required_roles=["dbmat_users", "dbmat_admins"])
+    def getAllGroupsNotInDev():
+        group_id = request.args.get("developer_id", type=int)
+        query = (
+            "SELECT * "
+            "FROM ATLAS_DBMON.DBMAT_DEV_GROUPS "
+            "WHERE DBMDG_ID NOT IN ("
+            "    SELECT UNIQUE DBMDG_ID "
+            "    FROM ATLAS_DBMON.DBMAT_DG2DEVS "
+            "    WHERE DBMDEV_ID = :developer_id"
+            ") "
+            "ORDER BY DBMDG_GROUP_NAME"
+        )
+        backendMgr.open_connection()
+        log.info(f"Will attempt to: {query}")
+        rows = backendMgr.get_rows(query,{"developer_id": developer_id})
+        response = add_columns("DBMAT_DEV_GROUPS", rows)
+        backendMgr.connection_close()
+        return jsonify(response)
+
