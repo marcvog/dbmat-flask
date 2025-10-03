@@ -505,3 +505,38 @@ else:
         backendMgr.connection_close()
         return jsonify(response)
 
+    @flaskmgr.app.route("/api/alldevsingroup/", methods=["GET"])
+    @requires_auth(required_roles=["dbmat_users", "dbmat_admins"])
+    def getAllDevsInGroup():
+        group_id = request.args.get("group_id", type=int)
+        query = (
+            "SELECT DISTINCT DEV.* "
+            "FROM ATLAS_DBMON.DBMAT_DEVELOPERS DEV "
+            "JOIN ATLAS_DBMON.DBMAT_DG2DEVS DG2DEV "
+            "  ON DEV.DBMDEV_ID = DG2DEV.DBMDEV_ID "
+            "WHERE DG2DEV.DBMDG_ID = :group_id "
+        )
+        backendMgr.open_connection()
+        log.info(f"Will attempt to: {query}")
+        rows = backendMgr.get_rows(query,{"group_id": group_id})
+        response = add_columns("DBMAT_DEVELOPERS", rows)
+        backendMgr.connection_close()
+        return jsonify(response)
+
+    @flaskmgr.app.route("/api/allgroupsindev/", methods=["GET"])
+    @requires_auth(required_roles=["dbmat_users", "dbmat_admins"])
+    def getAllGroupsInDev():
+        developer_id = request.args.get("developer_id", type=int)
+        query = (
+            "SELECT DISTINCT DG.* "
+            "FROM ATLAS_DBMON.DBMAT_DEV_GROUPS DG "
+            "JOIN ATLAS_DBMON.DBMAT_DG2DEVS DG2DEV "
+            "  ON DG.DBMDG_ID = DG2DEV.DBMDG_ID "
+            "WHERE DG2DEV.DBMDEV_ID = :developer_id"
+        )
+        backendMgr.open_connection()
+        log.info(f"Will attempt to: {query}")
+        rows = backendMgr.get_rows(query,{"developer_id": developer_id})
+        response = add_columns("DBMAT_DEV_GROUPS", rows)
+        backendMgr.connection_close()
+        
