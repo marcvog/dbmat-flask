@@ -539,4 +539,5 @@ else:
         rows = backendMgr.get_rows(query,{"developer_id": developer_id})
         response = add_columns("DBMAT_DEV_GROUPS", rows)
         backendMgr.connection_close()
+        return jsonify(response)
         
