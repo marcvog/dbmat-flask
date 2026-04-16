@@ -1,3 +1,0 @@
-[submodule "auth"]
-	path = auth
-	url = https://gitlab.cern.ch/mavogel/auth.git

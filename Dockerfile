@@ -1,5 +1,5 @@
 FROM redhat/ubi9:latest
-LABEL maintainer=marcelo.vogel@cern.ch
+LABEL maintainer=marcvogelg@gmail.ch
 
 # set up environment
 ENV USR=flasky
